@@ -1,0 +1,2 @@
+# Meter calibration points, display value vs PWM duty cycle value. Use calibrate-meter.py to find points for your meter. This also defines the range of your meter scale. (If it starts at zero, you can omit (0,0), it will be assumed.)
+meterCal = [(59,94)] #This default defines a 60-second scale, more or less, on a 3VDC meter (since Pi GPIO is 3.3V).

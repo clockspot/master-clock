@@ -1,3 +1,17 @@
+# Crazy Mac files
+.DS_Store
+
+# Custom settings file
+settings.py
+
+# Custom launching bash script
+launcher.sh
+
+
+
+
+# Below is stuff Github added when I told it this would be a Python project.
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

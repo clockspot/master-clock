@@ -27,10 +27,10 @@ Because the only link between the Clock and Bells is MIDI, the Clock can control
   * Normal: running seconds
 
 ## Files herein
-* **masterclock.py** - *Coming soon.* Where the magic happens.
+* **master-clock.py** - Where the magic happens.
 * **settings-sample.py** - Duplicate/rename this to **settings.py** and edit accordingly.
-* **meterCalibrate.py** - Use this to calibrate your 3VDC meter.
-* **clockCalibrate.py** - *Coming soon.* Use this to tell the Pi what time your slave clock reads (in case it runs, but is wrong).
+* **calibrate-meter.py** - Use this to calibrate your 3VDC meter.
+* **calibrate-clock.py** - *Coming soon.* Use this to tell the Pi what time your slave clock reads (in case it runs, but is wrong).
 
 ## Best-laid plans
 * Become a daemon
