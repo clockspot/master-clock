@@ -1,4 +1,4 @@
-print("Master clock starting.");
+# print("Master clock starting.");
 
 #External modules
 import RPi.GPIO as GPIO
@@ -49,13 +49,14 @@ def convertValueToDC(valNew):
 def updateMeter(valNew):
     #We will probably set it to valNew, but there may be some statuses to display instead. #TODO
     #if(no network connection): setMeter(10)
-    if(clockProcess != False and clockProcess.poll() is None): setMeter(30) #to indicate clock is moving
+    #if(clockProcess != False and clockProcess.poll() is None): setMeter(30) #to indicate clock is moving
     #elif(no network connection): setMeter(10)
     #elif(bad ntp): setMeter(20)
         #ntpq -c rv | grep "reftime" with result e.g.
         #reftime=dabcecde.167297c4  Sat, Apr 16 2016 11:54:54.087,
         #reftime=00000000.00000000  Sat, Apr 16 2016 11:54:54.087,
-    else: setMeter(valNew)
+    #else:
+    setMeter(valNew)
 #end def updateMeter
 
 dcLast = 0
