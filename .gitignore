@@ -7,6 +7,9 @@ settings.py
 # Custom launching bash script
 launcher.sh
 
+# Nonvolatile memory of slave clock display
+.slavetime.txt
+
 
 
 
