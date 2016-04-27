@@ -190,6 +190,7 @@ except KeyboardInterrupt:
 # except:
 #     print("Error")
 finally:
+    #TODO how best to deal with undefined variables in finally block
     setStoredSlaveTime() #just once per run
     if settings.piMode:
         if dcLast > 20: #kill the meter softly
