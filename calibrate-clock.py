@@ -3,12 +3,16 @@
 print("Use this script to tell master-clock what time your slave clock displays.")
 print("Type Ctrl+C to cancel.");
 
+#External settings
+import settings
+
+#External modules
 import os
 import sys
 
-def getScriptPath():
-    # http://stackoverflow.com/a/4943474
-    return os.path.dirname(os.path.realpath(sys.argv[0]))
+#def getScriptPath():
+#    # http://stackoverflow.com/a/4943474
+#    return os.path.dirname(os.path.realpath(sys.argv[0]))
     
 def getTimeInput(label,maxVal):
     while 1:
@@ -30,7 +34,7 @@ newMin = getTimeInput('Enter minute (0-59): ',59)
 newSec = getTimeInput('Enter second (0-59): ',59)
 try:
     #print('Writing to file: '+str(slaveTime.hour)+':'+str(slaveTime.minute)+':'+str(slaveTime.second))
-    with open(getScriptPath()+'/.slavetime.txt', 'w') as f:
+    with open(settings.slavePath, 'w') as f:
         #w truncates existing file http://stackoverflow.com/a/2967249
         f.seek(0)
         #Don't worry about leading zeroes, they'll be parsed to ints at read anyway
