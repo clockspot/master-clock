@@ -19,7 +19,7 @@ Because the only link between the Clock and Bells is MIDI, the Clock can control
 * **Make settings file** `settings.py` as a copy of `settings-sample.py`, and modify to suit. Other instructions within (e.g. file permissions).
 * **Set up the moving-coil meter.** If you like, replace or modify the dial with a seconds scale (on a 3VDC meter scale, each 0.5V corresponds to 10 seconds). Run `calibrate-meter.py` to find good calibration points – that is, find the input values that make the needle point to N seconds on the scale. At minimum, you need a point at the max end of the scale (59 seconds), but as your meter probably won't have a perfectly linear response, you can pick more points along the scale as needed to fine-tune it.
 * **Build the amplifier circuit** ([example](http://www.instructables.com/id/Make-an-Atom-Synchronised-Clock-from-a-1950s-Slav/)) and attach to your clock. Run `calibrate-clock.py` to tell master-clock what time the clock is displaying. If you don't have one yet, you can connect an LED+resistor in its place for testing. Run `test-clock.py` to test impulses of various lengths to the clock pin.
-* Run the script, directly or at startup. It will detach from the shell and run as a daemon. For now, stop it via e.g. `pkill -f master-clock`.
+* Run the script, e.g. `./master-clock.py`, directly or at startup. It will detach from the shell and run as a daemon. No start/stop service controls just yet; for now, stop it via e.g. `pkill -f master-clock`.
 * The meter will display as follows:
   * Daemon not running: 0s
   * *[TODO]* No network connection: 10s
@@ -28,11 +28,11 @@ Because the only link between the Clock and Bells is MIDI, the Clock can control
   * Normal: running seconds
 
 ## Files herein
-* **master-clock.py** - Where the magic happens.
-* **settings-sample.py** - Duplicate/rename this to **settings.py** and edit accordingly.
-* **calibrate-meter.py** - Use this to calibrate your 3VDC meter.
-* **calibrate-clock.py** - Use this to tell master-clock what time your slave clock reads.
-* **test-clock.py** - Use this to manually impulse the clock pin and find the right duration.
+* `master-clock.py` - Where the magic happens.
+* `settings-sample.py` - Duplicate/rename this to `settings.py` and edit accordingly.
+* `calibrate-meter.py` - Use this to calibrate your 3VDC meter.
+* `calibrate-clock.py` - Use this to tell master-clock what time your slave clock reads.
+* `test-clock.py` - Use this to manually impulse the clock pin and find the right duration.
 
 ## Best-laid plans
 * Admin via web console?
