@@ -1,10 +1,10 @@
 # master-clock
-Use your Raspberry Pi to drive impulse slave clocks and moving-coil galvanometers. Companion to [carillon](https://github.com/clockspot/carillon).
+Drive impulse slave clocks and voltmeters with a Raspberry Pi. Companion to [carillon](https://github.com/clockspot/carillon).
 
 ## What's it do?
 **Time-of-day display.** Using a standard GPIO pin, master-clock will output a signal to control an amplifier circuit to drive an impulse slave clock(s). It will keep its own nonvolatile record of the displayed time, and will keep the clock in sync with the system clock (itself synced via `ntpd` ideally). It will also fast-forward the clock in case of power loss, DST changes, you stopped the daemon to watch a movie undisturbed, etc.
 
-**Seconds and status display.** Using a GPIO pin that supports pulse-width modulation, it will control the PWM duty cycle to directly control a 3VDC moving-coil galvanometer. It includes ballistics control to move the needle quickly but gently, and (hopefully) never cause it to peg violently.
+**Seconds and status display.** Using a GPIO pin that supports pulse-width modulation, it will control the PWM duty cycle to directly control a 3VDC voltmeter. It includes ballistics control to move the needle quickly but gently, and (hopefully) never cause it to peg violently.
 
 ## Why?
 I got a harebrained scheme to build an indoor carillon in two loosely-coupled parts:
@@ -17,7 +17,7 @@ Because the only link between the Clock and Bells is MIDI, the Clock can control
 ## How to use
 * **Install packages** if not present: `python`, `python-daemon`
 * **Make settings file** `settings.py` as a copy of `settings-sample.py`, and modify to suit. Other instructions within (e.g. file permissions).
-* **Set up the moving-coil meter.** If you like, replace or modify the dial with a seconds scale (on a 3VDC meter scale, each 0.5V corresponds to 10 seconds). Run `calibrate-meter.py` to find good calibration points – that is, find the input values that make the needle point to N seconds on the scale. At minimum, you need a point at the max end of the scale (59 seconds), but as your meter probably won't have a perfectly linear response, you can pick more points along the scale as needed to fine-tune it.
+* **Set up the voltmeter.** If you like, replace or modify the dial with a seconds scale (on a 3VDC meter scale, each 0.5V corresponds to 10 seconds). Run `calibrate-meter.py` to find good calibration points – that is, find the input values that make the needle point to N seconds on the scale. At minimum, you need a point at the max end of the scale (59 seconds), but as your meter probably won't have a perfectly linear response, you can pick more points along the scale as needed to fine-tune it.
 * **Build the amplifier circuit** ([example](http://www.instructables.com/id/Make-an-Atom-Synchronised-Clock-from-a-1950s-Slav/)) and attach to your clock. Run `calibrate-clock.py` to tell master-clock what time the clock is displaying. If you don't have one yet, you can connect an LED+resistor in its place for testing. Run `test-clock.py` to test impulses of various lengths to the clock pin.
 * Run the script, e.g. `./master-clock.py`, directly or at startup. It will detach from the shell and run as a daemon. No start/stop service controls just yet; for now, stop it via e.g. `pkill -f master-clock`.
 * The meter will display as follows:
