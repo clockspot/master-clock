@@ -156,7 +156,7 @@ class MasterClock():
             self.impulseSlave(False) #don't write to file for each advance
             #self.logger.debug('Advancing... diff is '+str((self.slaveTime-datetime.now()).total_seconds()))
             time.sleep(settings.slaveRecover)
-        self.logger.info('syncSlave: sync complete.');
+        self.logger.info('syncSlave: sync complete.')
         if settings.slaveWriteRealTime:
             self.setStoredSlaveTime()
     #end syncSlave
@@ -183,7 +183,7 @@ class MasterClock():
         #end pi mode
         
         try:    
-            self.logger.info("Master clock start. ********************");
+            self.logger.info("Master clock start. ********************")
     
             self.getStoredSlaveTime() #just once per run
             self.syncSlave()
@@ -203,7 +203,7 @@ class MasterClock():
             #end while
 
         finally:
-            self.logger.info('Master clock stop. ....................');
+            self.logger.info('Master clock stop. ....................')
             self.logger.exception('')
             self.setStoredSlaveTime()
             if settings.piMode:
