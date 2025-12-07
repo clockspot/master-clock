@@ -197,7 +197,8 @@ class MasterClock():
                     #TODO: fight! fight! fight! clock or meter first?
                     if(nowTime.second % settings.slaveInterval == 0): self.impulseSlave()
                     if(nowTime.minute == 0 and nowTime.second == 0): self.syncSlave() #in case of DST changes
-                    self.updateMeter(nowTime.second)
+                    if(settings.meterPin != False):
+                        self.updateMeter(nowTime.second)
                 #end if new second
                 time.sleep(0.05)
             #end while
@@ -207,10 +208,11 @@ class MasterClock():
             self.logger.exception('')
             self.setStoredSlaveTime()
             if settings.piMode:
-                if self.dcLast > 20: #kill the meter softly
-                    self.setMeter(0)
                 GPIO.output(settings.slavePin, GPIO.LOW)
-                self.pwm.stop()
+                if(settings.meterPin != False):
+                    if self.dcLast > 20: #kill the meter softly
+                        self.setMeter(0)
+                    self.pwm.stop()
                 GPIO.cleanup()
             #end pi mode
         #end try/except/finally
