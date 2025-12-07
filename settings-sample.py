@@ -10,12 +10,15 @@ slaveWriteRealTime = True
 # True writes after every impulse (except during fast forward), but this may affect the life of storage media; False writes only when the app closes, but this means it'll need calibration after any power loss
 
 # Slave clock control
-slavePin = 23 #Broadcom pin ID
+slaveBipolar = True #if False, define slavePin; if True, define slavePinEven and slavePinOdd)
+#Broadcom pin ID(s)
+slavePin = False
+slavePinEven = 23
+slavePinOdd = 24
 slaveInterval = 30 #seconds between impulses (normal operation, includes impulse duration)
 slaveImpulse = 0.3 #seconds impulse duration
 slaveRecover = 0.4 #seconds between impulses (fast forwarding, excludes impulse duration)
 slaveHrs = 12 #Is it a 12-hour or 24-hour display?
-#slaveIsBipolar = False #TODO support this with two GPIO pins
 slaveHold = 2 #If the slave is no more than X hours ahead (disregarding date), wait for real time to catch up, instead of advancing all the way around. If your slave displays the day/date (e.g. Solari Emera/Dator), you may prefer to set this to 0, as the slave is unlikely to get ahead of real time (without being set forward manually).
 
 # Seconds/status meter control

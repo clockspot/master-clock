@@ -131,9 +131,23 @@ class MasterClock():
     def impulseSlave(self,write=True):
         self.slaveTime = self.slaveTime + timedelta(seconds=settings.slaveInterval)
         if settings.piMode:
-            GPIO.output(settings.slavePin, GPIO.HIGH)
+            if settings.slaveBipolar:
+                #if interval is one second, assume we are driving seconds; else minutes
+                polarity = self.slaveTime.second % 2 if settings.slaveInterval==1 else self.slaveTime.minute % 2
+                if polarity:
+                    GPIO.output(settings.slavePinOdd, GPIO.HIGH)
+                else:
+                    GPIO.output(settings.slavePinEven, GPIO.HIGH)
+            else:
+                GPIO.output(settings.slavePin, GPIO.HIGH)
+            
             time.sleep(settings.slaveImpulse)
-            GPIO.output(settings.slavePin, GPIO.LOW)
+
+            if settings.slaveBipolar:
+                GPIO.output(settings.slavePinOdd, GPIO.LOW)
+                GPIO.output(settings.slavePinEven, GPIO.LOW)
+            else:
+                GPIO.output(settings.slavePin, GPIO.LOW)
         #end pi mode
         self.logger.debug('Advance clock to '+str(self.slaveTime.hour)+':'+str(self.slaveTime.minute)+':'+str(self.slaveTime.second))
         if write and settings.slaveWriteRealTime:
@@ -175,7 +189,11 @@ class MasterClock():
         
         if settings.piMode:
             GPIO.setmode(GPIO.BCM)
-            GPIO.setup(settings.slavePin, GPIO.OUT)
+            if settings.slaveBipolar:
+                GPIO.setup(settings.slavePinOdd, GPIO.OUT)
+                GPIO.setup(settings.slavePinEven, GPIO.OUT)
+            else:
+                GPIO.setup(settings.slavePin, GPIO.OUT)
             if(settings.meterPin != False):
                 GPIO.setup(settings.meterPin, GPIO.OUT)
                 self.pwm = GPIO.PWM(settings.meterPin, 50)
@@ -208,11 +226,15 @@ class MasterClock():
             self.logger.exception('')
             self.setStoredSlaveTime()
             if settings.piMode:
-                GPIO.output(settings.slavePin, GPIO.LOW)
                 if(settings.meterPin != False):
                     if self.dcLast > 20: #kill the meter softly
                         self.setMeter(0)
                     self.pwm.stop()
+                if settings.slaveBipolar:
+                    GPIO.setup(settings.slavePinOdd, GPIO.OUT)
+                    GPIO.setup(settings.slavePinEven, GPIO.OUT)
+                else:
+                    GPIO.output(settings.slavePin, GPIO.LOW)
                 GPIO.cleanup()
             #end pi mode
         #end try/except/finally
