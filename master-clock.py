@@ -63,27 +63,28 @@ class MasterClock():
     #end def updateMeter
 
     def setMeter(self,valNew):
-        #self.pwm must already have been started
-        dcNew = self.convertValueToDC(valNew) #find new dc
-        if dcNew > 100: dcNew = 100 #apply range limits
-        if dcNew < 0: dcNew = 0
-        #set meter, using ballistics if dcChg is great enough
-        dcChg = dcNew-self.dcLast
-        if settings.piMode:
-            if(abs(dcChg) > settings.meterChg): #apply ballistics
-                #easing out equations by Robert Penner - gizma.com/easing
-                for t in range(1, settings.meterStp+1):
-                    #quadratic t^2
-                    t /= float(settings.meterStp)
-                    nowDC = float(-dcChg) * t * (t-2) + self.dcLast
-                    self.pwm.ChangeDutyCycle( nowDC )
-                    if(t<settings.meterStp):
-                        time.sleep(settings.meterLag)
-            else: #just go to there
-                self.pwm.ChangeDutyCycle(dcNew)
-        #end pi mode
-        #self.logger.debug('Set meter to val '+str(valNew)+': from dc '+str(self.dcLast)+' '+str(dcChg)+' to '+str(dcNew))
-        self.dcLast = dcNew
+        if settings.meterPin != False:
+            #self.pwm must already have been started
+            dcNew = self.convertValueToDC(valNew) #find new dc
+            if dcNew > 100: dcNew = 100 #apply range limits
+            if dcNew < 0: dcNew = 0
+            #set meter, using ballistics if dcChg is great enough
+            dcChg = dcNew-self.dcLast
+            if settings.piMode:
+                if(abs(dcChg) > settings.meterChg): #apply ballistics
+                    #easing out equations by Robert Penner - gizma.com/easing
+                    for t in range(1, settings.meterStp+1):
+                        #quadratic t^2
+                        t /= float(settings.meterStp)
+                        nowDC = float(-dcChg) * t * (t-2) + self.dcLast
+                        self.pwm.ChangeDutyCycle( nowDC )
+                        if(t<settings.meterStp):
+                            time.sleep(settings.meterLag)
+                else: #just go to there
+                    self.pwm.ChangeDutyCycle(dcNew)
+            #end pi mode
+            #self.logger.debug('Set meter to val '+str(valNew)+': from dc '+str(self.dcLast)+' '+str(dcChg)+' to '+str(dcNew))
+            self.dcLast = dcNew
     #end def setMeter
 
     #Slave clock control
@@ -128,7 +129,7 @@ class MasterClock():
                 #close
         except:
             self.logger.warn('Could not write slave time to file.')
-    #end setStoredSlaveTIme
+    #end setStoredSlaveTime
 
     def impulseSlave(self,write=True):
         self.slaveTime = self.slaveTime + timedelta(seconds=settings.slaveInterval)
@@ -196,7 +197,7 @@ class MasterClock():
                 GPIO.setup(settings.slavePinEven, GPIO.OUT)
             else:
                 GPIO.setup(settings.slavePin, GPIO.OUT)
-            if(settings.meterPin != False):
+            if settings.meterPin != False:
                 GPIO.setup(settings.meterPin, GPIO.OUT)
                 self.pwm = GPIO.PWM(settings.meterPin, 50)
                 self.pwm.start(0)
@@ -251,7 +252,7 @@ class MasterClock():
             self.logger.info('Master clock stop. ....................')
             self.setStoredSlaveTime()
             if settings.piMode:
-                if(settings.meterPin != False):
+                if settings.meterPin != False:
                     if self.dcLast > 20: #kill the meter softly
                         self.setMeter(0)
                     self.pwm.stop()
