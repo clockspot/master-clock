@@ -9,7 +9,8 @@ import os #includes path, listdir
 import sys
 import logging
 import time #includes asctime, localtime
-import subprocess
+import subprocess #for starting it without hogging the shell
+import threading #for advancing clock and meter simultaneously
 from subprocess import call #synchronous
 from subprocess import Popen #asynchronous
 from datetime import datetime
@@ -49,6 +50,7 @@ class MasterClock():
     #end def convertValueToDC
 
     def updateMeter(self,valNew):
+        #self.logger.debug('updateMeter to '+str(valNew))
         #We will probably set it to valNew, but may want to set status instead. TODO
         #if(no network connection): self.setMeter(10)
         #elif(bad ntp): self.setMeter(20)
@@ -154,8 +156,8 @@ class MasterClock():
             self.setStoredSlaveTime() #store in case of power failure.
 
     def syncSlave(self):
-        #Synchronous proc to check if slave is in sync, and if not, to wait or advance.
-        #Will interrupt main loop, but that's ok, seconds don't move during it anyway.
+        #Check if slave is in sync, and if not, to wait or advance
+        #Run this synchronously, so it will interrupt normal time display
         diff = (self.slaveTime-datetime.now()).total_seconds()
         self.logger.info('syncSlave: diff is: '+str(diff))
         if(diff > 0-settings.slaveInterval and diff <= 0): return
@@ -206,24 +208,47 @@ class MasterClock():
             self.getStoredSlaveTime() #just once per run
             self.syncSlave()
     
-            lastSecond = -1
+            lastMinute = -1
+            lastTick = -1
             while 1:
                 #important to snapshot current time, so test and assignment use same time value
                 nowTime = datetime.now()
-                if lastSecond != nowTime.second:
-                    lastSecond = nowTime.second
-                    #TODO: fight! fight! fight! clock or meter first?
-                    if(nowTime.second % settings.slaveInterval == 0): self.impulseSlave()
-                    if(nowTime.minute == 0 and nowTime.second == 0): self.syncSlave() #in case of DST changes
-                    if(settings.meterPin != False):
-                        self.updateMeter(nowTime.second)
-                #end if new second
+                nowTick = nowTime.second*1000000 + nowTime.microsecond
+                #As soon as the minute changes, or we exceed the tick duration, time for a tick
+                #It will always fire on first run because of the minute mismatch
+                if nowTime.minute != lastMinute or nowTick > lastTick + settings.meterSec*1000000:
+                    #Use the "clean" tick value, rather than the slightly late sample time, to avoid drift
+                    nowTick = nowTick - (nowTick % (settings.meterSec*1000000))
+                    #self.logger.debug('start of tick '+str(float(nowTick)/1000000))
+                    #slave clock and meter adjustments are started as threads so they can be simultaneous
+                    #thrMeter is always done; thrSlave is only done when conditions warrant
+                    thrMeter = threading.Thread(target=self.updateMeter, args=(float(nowTick)/1000000,))
+                    thrMeter.start() #always do this one
+                    thrSlave = threading.Thread(target=self.impulseSlave)
+                    if nowTime.second % settings.slaveInterval == 0:
+                        #self.logger.debug('time to advance');
+                        thrSlave.start()
+                        #self.impulseSlave()
+                    if nowTime.minute == 0 and nowTime.minute != lastMinute and lastMinute != -1:
+                        #At the top of the hour, call syncSlave in case of DST changes
+                        #self.logger.debug('time to sync');
+                        if thrSlave.ident != None: thrSlave.join() #wait until the last impulse is done
+                        thrMeter.join() #wait until the meter update is done
+                        self.syncSlave() #call synchronously to interrupt main time display loop
+                    #update last values
+                    lastMinute = nowTime.minute
+                    lastTick = nowTick
+                    #don't proceed with the loop until all going threads have been handled
+                    if thrSlave.ident != None: thrSlave.join()
+                    thrMeter.join()
+                    #self.logger.debug('end of tick');
+                #end tick
                 time.sleep(0.05)
             #end while
-
+        except:
+            self.logger.exception('')
         finally:
             self.logger.info('Master clock stop. ....................')
-            self.logger.exception('')
             self.setStoredSlaveTime()
             if settings.piMode:
                 if(settings.meterPin != False):

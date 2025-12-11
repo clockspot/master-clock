@@ -26,6 +26,7 @@ meterPin = 18 #Broadcom pin ID that supports PWM - set to False if you have no m
 # Meter calibration points, display value vs PWM duty cycle value. Use calibrate-meter.py to find points for your meter. This also defines the range of your meter scale. (If it starts at zero, you can omit (0,0); it will be assumed.)
 meterCal = [(59,94)] #This default defines a 60-second scale, more or less, on a 3VDC meter (since Pi GPIO is 3.3V).
 # Meter ballistics: when making a relatively large change to the meter display, quadratic easing is applied to prevent the needle from moving too violently (pegging, wobbling)
+meterSec = 1 #ticking duration: one tick per x sec. For small meters, a slower (higher) value may prove easier to read. (Ticking pattern will reset at the top of the minute, so best to pick something that 60 is divisible by.)
 meterChg = 10 #min change in pwm duty cycle that will trigger ballistics
 meterStp = 4 #apply ballistics in this many steps
 meterLag = 0.18 #seconds between ballistics steps
