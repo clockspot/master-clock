@@ -9,7 +9,8 @@ import os #includes path, listdir
 import sys
 import logging
 import time #includes asctime, localtime
-import subprocess
+import subprocess #for starting it without hogging the shell
+import threading #for advancing clock and meter simultaneously
 from subprocess import call #synchronous
 from subprocess import Popen #asynchronous
 from datetime import datetime
@@ -49,6 +50,7 @@ class MasterClock():
     #end def convertValueToDC
 
     def updateMeter(self,valNew):
+        #self.logger.debug('updateMeter to '+str(valNew))
         #We will probably set it to valNew, but may want to set status instead. TODO
         #if(no network connection): self.setMeter(10)
         #elif(bad ntp): self.setMeter(20)
@@ -61,27 +63,28 @@ class MasterClock():
     #end def updateMeter
 
     def setMeter(self,valNew):
-        #self.pwm must already have been started
-        dcNew = self.convertValueToDC(valNew) #find new dc
-        if dcNew > 100: dcNew = 100 #apply range limits
-        if dcNew < 0: dcNew = 0
-        #set meter, using ballistics if dcChg is great enough
-        dcChg = dcNew-self.dcLast
-        if settings.piMode:
-            if(abs(dcChg) > settings.meterChg): #apply ballistics
-                #easing out equations by Robert Penner - gizma.com/easing
-                for t in range(1, settings.meterStp+1):
-                    #quadratic t^2
-                    t /= float(settings.meterStp)
-                    nowDC = float(-dcChg) * t * (t-2) + self.dcLast
-                    self.pwm.ChangeDutyCycle( nowDC )
-                    if(t<settings.meterStp):
-                        time.sleep(settings.meterLag)
-            else: #just go to there
-                self.pwm.ChangeDutyCycle(dcNew)
-        #end pi mode
-        #self.logger.debug('Set meter to val '+str(valNew)+': from dc '+str(self.dcLast)+' '+str(dcChg)+' to '+str(dcNew))
-        self.dcLast = dcNew
+        if settings.meterPin != False:
+            #self.pwm must already have been started
+            dcNew = self.convertValueToDC(valNew) #find new dc
+            if dcNew > 100: dcNew = 100 #apply range limits
+            if dcNew < 0: dcNew = 0
+            #set meter, using ballistics if dcChg is great enough
+            dcChg = dcNew-self.dcLast
+            if settings.piMode:
+                if(abs(dcChg) > settings.meterChg): #apply ballistics
+                    #easing out equations by Robert Penner - gizma.com/easing
+                    for t in range(1, settings.meterStp+1):
+                        #quadratic t^2
+                        t /= float(settings.meterStp)
+                        nowDC = float(-dcChg) * t * (t-2) + self.dcLast
+                        self.pwm.ChangeDutyCycle( nowDC )
+                        if(t<settings.meterStp):
+                            time.sleep(settings.meterLag)
+                else: #just go to there
+                    self.pwm.ChangeDutyCycle(dcNew)
+            #end pi mode
+            #self.logger.debug('Set meter to val '+str(valNew)+': from dc '+str(self.dcLast)+' '+str(dcChg)+' to '+str(dcNew))
+            self.dcLast = dcNew
     #end def setMeter
 
     #Slave clock control
@@ -126,22 +129,36 @@ class MasterClock():
                 #close
         except:
             self.logger.warn('Could not write slave time to file.')
-    #end setStoredSlaveTIme
+    #end setStoredSlaveTime
 
     def impulseSlave(self,write=True):
         self.slaveTime = self.slaveTime + timedelta(seconds=settings.slaveInterval)
         if settings.piMode:
-            GPIO.output(settings.slavePin, GPIO.HIGH)
+            if settings.slaveBipolar:
+                #if interval is one second, assume we are driving seconds; else minutes
+                polarity = self.slaveTime.second % 2 if settings.slaveInterval==1 else self.slaveTime.minute % 2
+                if polarity:
+                    GPIO.output(settings.slavePinOdd, GPIO.HIGH)
+                else:
+                    GPIO.output(settings.slavePinEven, GPIO.HIGH)
+            else:
+                GPIO.output(settings.slavePin, GPIO.HIGH)
+            
             time.sleep(settings.slaveImpulse)
-            GPIO.output(settings.slavePin, GPIO.LOW)
+
+            if settings.slaveBipolar:
+                GPIO.output(settings.slavePinOdd, GPIO.LOW)
+                GPIO.output(settings.slavePinEven, GPIO.LOW)
+            else:
+                GPIO.output(settings.slavePin, GPIO.LOW)
         #end pi mode
         self.logger.debug('Advance clock to '+str(self.slaveTime.hour)+':'+str(self.slaveTime.minute)+':'+str(self.slaveTime.second))
         if write and settings.slaveWriteRealTime:
             self.setStoredSlaveTime() #store in case of power failure.
 
     def syncSlave(self):
-        #Synchronous proc to check if slave is in sync, and if not, to wait or advance.
-        #Will interrupt main loop, but that's ok, seconds don't move during it anyway.
+        #Check if slave is in sync, and if not, to wait or advance
+        #Run this synchronously, so it will interrupt normal time display
         diff = (self.slaveTime-datetime.now()).total_seconds()
         self.logger.info('syncSlave: diff is: '+str(diff))
         if(diff > 0-settings.slaveInterval and diff <= 0): return
@@ -175,8 +192,12 @@ class MasterClock():
         
         if settings.piMode:
             GPIO.setmode(GPIO.BCM)
-            GPIO.setup(settings.slavePin, GPIO.OUT)
-            if(settings.meterPin != False):
+            if settings.slaveBipolar:
+                GPIO.setup(settings.slavePinOdd, GPIO.OUT)
+                GPIO.setup(settings.slavePinEven, GPIO.OUT)
+            else:
+                GPIO.setup(settings.slavePin, GPIO.OUT)
+            if settings.meterPin != False:
                 GPIO.setup(settings.meterPin, GPIO.OUT)
                 self.pwm = GPIO.PWM(settings.meterPin, 50)
                 self.pwm.start(0)
@@ -188,29 +209,58 @@ class MasterClock():
             self.getStoredSlaveTime() #just once per run
             self.syncSlave()
     
-            lastSecond = -1
+            lastMinute = -1
+            lastTick = -1
             while 1:
                 #important to snapshot current time, so test and assignment use same time value
                 nowTime = datetime.now()
-                if lastSecond != nowTime.second:
-                    lastSecond = nowTime.second
-                    #TODO: fight! fight! fight! clock or meter first?
-                    if(nowTime.second % settings.slaveInterval == 0): self.impulseSlave()
-                    if(nowTime.minute == 0 and nowTime.second == 0): self.syncSlave() #in case of DST changes
-                    self.updateMeter(nowTime.second)
-                #end if new second
+                nowTick = nowTime.second*1000000 + nowTime.microsecond
+                #As soon as the minute changes, or we exceed the tick duration, time for a tick
+                #It will always fire on first run because of the minute mismatch
+                if nowTime.minute != lastMinute or nowTick > lastTick + settings.meterSec*1000000:
+                    #Use the "clean" tick value, rather than the slightly late sample time, to avoid drift
+                    nowTick = nowTick - (nowTick % (settings.meterSec*1000000))
+                    #self.logger.debug('start of tick '+str(float(nowTick)/1000000))
+                    #slave clock and meter adjustments are started as threads so they can be simultaneous
+                    #thrMeter is always done; thrSlave is only done when conditions warrant
+                    thrMeter = threading.Thread(target=self.updateMeter, args=(float(nowTick)/1000000,))
+                    thrMeter.start() #always do this one
+                    thrSlave = threading.Thread(target=self.impulseSlave)
+                    if nowTime.second % settings.slaveInterval == 0:
+                        #self.logger.debug('time to advance');
+                        thrSlave.start()
+                        #self.impulseSlave()
+                    if nowTime.minute == 0 and nowTime.minute != lastMinute and lastMinute != -1:
+                        #At the top of the hour, call syncSlave in case of DST changes
+                        #self.logger.debug('time to sync');
+                        if thrSlave.ident != None: thrSlave.join() #wait until the last impulse is done
+                        thrMeter.join() #wait until the meter update is done
+                        self.syncSlave() #call synchronously to interrupt main time display loop
+                    #update last values
+                    lastMinute = nowTime.minute
+                    lastTick = nowTick
+                    #don't proceed with the loop until all going threads have been handled
+                    if thrSlave.ident != None: thrSlave.join()
+                    thrMeter.join()
+                    #self.logger.debug('end of tick');
+                #end tick
                 time.sleep(0.05)
             #end while
-
+        except:
+            self.logger.exception('')
         finally:
             self.logger.info('Master clock stop. ....................')
-            self.logger.exception('')
             self.setStoredSlaveTime()
             if settings.piMode:
-                if self.dcLast > 20: #kill the meter softly
-                    self.setMeter(0)
-                GPIO.output(settings.slavePin, GPIO.LOW)
-                self.pwm.stop()
+                if settings.meterPin != False:
+                    if self.dcLast > 20: #kill the meter softly
+                        self.setMeter(0)
+                    self.pwm.stop()
+                if settings.slaveBipolar:
+                    GPIO.setup(settings.slavePinOdd, GPIO.OUT)
+                    GPIO.setup(settings.slavePinEven, GPIO.OUT)
+                else:
+                    GPIO.output(settings.slavePin, GPIO.LOW)
                 GPIO.cleanup()
             #end pi mode
         #end try/except/finally
